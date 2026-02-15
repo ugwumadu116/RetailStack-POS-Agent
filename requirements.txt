@@ -1,0 +1,8 @@
+# RetailStack POS Agent - Requirements
+python-dateutil>=2.8.2
+requests>=2.31.0
+pyserial>=3.5
+pytest>=7.4.0
+# Optional: Admin tray icon (install for tray UI)
+pystray>=0.19.0
+Pillow>=10.0.0

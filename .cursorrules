@@ -1,0 +1,77 @@
+# RetailStack POS Agent - Cursor Rules
+
+## Project Overview
+Build a Windows desktop application that intercepts ESC/POS receipt printer data, parses sales transactions, and syncs to Retail Stack servers.
+
+## Core Functionality
+- Intercept ESC/POS byte stream from thermal printers (Epson, Star, Bixolon)
+- Parse: item name, quantity, unit price, total, transaction ID, timestamp
+- Local SQLite buffer with retry logic
+- Sequence gap detection
+- Crash recovery with replay
+
+## Tech Stack
+- **Language:** Python 3.11+
+- **Database:** SQLite (built-in)
+- **Printer Interception:** Serial, Network (TCP), or Windows Port
+
+## Key Modules
+
+### 1. escpos_parser.py ✅
+- Parse ESC/POS byte stream
+- Support Epson, Star, Bixolon variants
+- Extract: items, qty, price, receipt ID, total
+- Handle unknown commands gracefully
+
+### 2. printer_interceptor.py ✅
+- Network (TCP/IP) listener
+- Serial port monitoring  
+- USB support (stub)
+- Windows port support (stub)
+
+### 3. transaction_buffer.py ✅
+- SQLite storage
+- Pending sync queue
+- Retry logic
+
+### 4. gap_detector.py ✅
+- Track receipt ID sequence
+- Flag missing IDs
+- Alert on gaps
+
+### 5. sync_client.py ✅
+- REST API client
+- Retry with backoff
+
+### 6. recovery_manager.py ✅
+- On restart: replay unsynced
+- Log downtime
+
+## Testing
+Run: `pytest tests/`
+
+## Running
+```bash
+python main.py
+```
+
+## Files Created
+```
+RetailStackPosAgent/
+├── .cursorrules
+├── TASK.md
+├── README.md
+├── config.json
+├── requirements.txt
+├── main.py
+├── src/
+│   ├── __init__.py
+│   ├── escpos_parser.py
+│   ├── printer_interceptor.py
+│   ├── transaction_buffer.py
+│   ├── gap_detector.py
+│   ├── sync_client.py
+│   └── recovery_manager.py
+└── tests/
+    └── test_parser.py
+```
