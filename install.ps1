@@ -25,12 +25,24 @@ if (-not $pythonCmd) {
 $pythonVersion = & $pythonCmd --version 2>&1
 Write-Host "✅ Python found: $pythonVersion" -ForegroundColor Green
 
-# Get script directory
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# Get current directory
+$scriptDir = pwd
+
+# Download and extract project
+Write-Host ""
+Write-Host "📦 Downloading RetailStack POS Agent..." -ForegroundColor Yellow
+$zipPath = "$env:TEMP\retailstack.zip"
+$extractPath = "$env:TEMP\RetailStack-POS-Agent"
+
+Invoke-WebRequest -Uri "https://github.com/ugwumadu116/RetailStack-POS-Agent/archive/refs/heads/main.zip" -OutFile $zipPath
+Expand-Archive -Path $zipPath -DestinationPath "$env:TEMP" -Force
+Copy-Item -Path "$extractPath-main\*" -Destination $scriptDir -Recurse -Force
+Remove-Item -Path $zipPath -Force
+Remove-Item -Path $extractPath-main -Recurse -Force
+
 Set-Location $scriptDir
 
-# Install dependencies (--user works on externally-managed Python)
-Write-Host ""
+# Install dependencies
 Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
 & $pythonCmd -m pip install --user pyserial requests python-dateutil 2>$null
 
@@ -40,7 +52,6 @@ if ($LASTEXITCODE -ne 0) {
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Failed to install dependencies" -ForegroundColor Red
-    Write-Host "Try: $pythonCmd -m pip install --user pyserial requests python-dateutil" -ForegroundColor Yellow
     exit 1
 }
 
