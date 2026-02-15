@@ -105,69 +105,74 @@ HTML = """
     <title>RetailStack POS Agent</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-               max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-        h1 { color: #333; }
-        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+               max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a1e; color: #e4e4e7; }
+        h1 { color: #fafafa; }
+        h2 { color: #d4d4d8; }
+        .card { background: #27272a; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 1px solid #3f3f46; }
         .status { display: flex; gap: 10px; flex-wrap: wrap; }
         .badge { padding: 8px 16px; border-radius: 20px; font-weight: bold; }
-        .green { background: #d4edda; color: #155724; }
-        .yellow { background: #fff3cd; color: #856404; }
-        .red { background: #f8d7da; color: #721c24; }
-        button { background: #007bff; color: white; border: none; padding: 12px 24px; 
+        .green { background: #166534; color: #86efac; }
+        .yellow { background: #854d0e; color: #fde047; }
+        .red { background: #991b1b; color: #fca5a5; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px;
                  border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
-        button:hover { background: #0056b3; }
-        button.test { background: #28a745; }
-        button.test:hover { background: #1e7e34; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; }
-        .log { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 5px; 
-               font-family: monospace; height: 200px; overflow-y: auto; }
-        .instructions { background: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
+        button:hover { background: #2563eb; }
+        button.test { background: #16a34a; color: white; }
+        button.test:hover { background: #15803d; }
+        table { width: 100%; border-collapse: collapse; color: #e4e4e7; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #3f3f46; }
+        th { background: #3f3f46; color: #a1a1aa; }
+        tr:hover { background: #2d2d30; }
+        .log { background: #0f0f12; color: #22c55e; padding: 15px; border-radius: 5px;
+               font-family: monospace; height: 200px; overflow-y: auto; border: 1px solid #27272a; }
+        .instructions { background: #1e3a5f; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6; color: #bfdbfe; }
+        .instructions p, .instructions li { color: #e0e7ff; }
+        #testResult { color: #86efac; }
+        p { color: #a1a1aa; }
     </style>
 </head>
 <body>
-    <h1>🧾 RetailStack POS Agent</h1>
+    <h1>RetailStack POS Agent</h1>
     
     <div class="card">
-        <h2>📊 Status</h2>
+        <h2>Status</h2>
         <div class="status">
-            <div class="badge green">● Running</div>
+            <div class="badge green">Running</div>
             <div class="badge">Port: 9100</div>
         </div>
     </div>
     
     <div class="card">
-        <h2>🧪 Test</h2>
-        <p>Click to simulate a test transaction:</p>
-        <button class="test" onclick="runTest()">📤 Send Test Data</button>
+        <h2>Test</h2>
+        <p>Simulate a test transaction:</p>
+        <button class="test" onclick="runTest()">Send Test Data</button>
         <p id="testResult"></p>
     </div>
     
     <div class="card">
-        <h2>📈 Transactions</h2>
+        <h2>Transactions</h2>
         <div id="transactions">Loading...</div>
     </div>
     
     <div class="card">
-        <h2>📝 How It Works</h2>
+        <h2>How It Works</h2>
         <div class="instructions">
             <p><strong>What this does:</strong> Listens for receipt printer data and saves transactions.</p>
-            <p><strong>For QA Testing:</strong></p>
+            <p><strong>To test:</strong></p>
             <ol>
                 <li>Click "Send Test Data" above</li>
-                <li>Check if transaction appears in the table</li>
-                <li>For real printer: Configure printer to send data to this PC's port 9100</li>
+                <li>Check that the transaction appears in the table below</li>
+                <li>For a real printer, send its data to this computer on port 9100</li>
             </ol>
-            <p><strong>Logs:</strong> Check logs/retailstack.log</p>
+            <p><strong>Logs:</strong> See logs/retailstack.log</p>
         </div>
     </div>
     
     <script>
         function runTest() {
             fetch('/test').then(r => r.text()).then(d => {
-                document.getElementById('testResult').innerHTML = '<strong>✅ ' + d + '</strong>';
+                document.getElementById('testResult').innerHTML = '<strong>' + d + '</strong>';
                 loadTransactions();
             });
         }
@@ -179,7 +184,7 @@ HTML = """
                     html += '<tr><td>' + tx.receipt_id + '</td><td>N' + tx.total + '</td><td>' + tx.timestamp + '</td></tr>';
                 });
                 html += '</table>';
-                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click "Send Test Data"!</p>';
+                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click Send Test Data above.</p>';
                 document.getElementById('transactions').innerHTML = html;
             });
         }
