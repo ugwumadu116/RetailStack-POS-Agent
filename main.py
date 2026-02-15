@@ -130,10 +130,15 @@ HTML = """
         .instructions p, .instructions li { color: #e0e7ff; }
         #testResult { color: #86efac; }
         p { color: #a1a1aa; }
+        .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .header img { width: 48px; height: 48px; object-fit: contain; }
     </style>
 </head>
 <body>
-    <h1>RetailStack POS Agent</h1>
+    <div class="header">
+        <img src="/assets/logo.png" alt="RetailStack" />
+        <h1>RetailStack POS Agent</h1>
+    </div>
     
     <div class="card">
         <h2>Status</h2>
@@ -203,6 +208,15 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(HTML.encode())
+        elif self.path == '/assets/logo.png':
+            logo_path = Path(__file__).parent / 'assets' / 'logo.png'
+            if logo_path.exists():
+                self.send_response(200)
+                self.send_header('Content-type', 'image/png')
+                self.end_headers()
+                self.wfile.write(logo_path.read_bytes())
+            else:
+                self.send_error(404)
         elif self.path == '/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
