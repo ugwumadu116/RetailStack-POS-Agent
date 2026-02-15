@@ -1,48 +1,36 @@
 # RetailStack POS Agent
 
-Desktop application that intercepts ESC/POS receipt printer data, parses sales transactions, and syncs to Retail Stack servers.
+Desktop app that receives receipt printer data, parses sales (items, quantities, prices, totals, receipt IDs), stores them in SQLite, and can sync to Retail Stack. It also detects missing receipt numbers and replays unsynced data after a restart.
 
-## Quick Install
+## Install
 
-### Option 1: Download ZIP (Recommended)
-1. Go to: https://github.com/ugwumadu116/RetailStack-POS-Agent/archive/refs/heads/main.zip
-2. Download and extract the ZIP
-3. Open terminal in the extracted folder
-4. Run: `bash install.sh`
+**Download ZIP:** Get the project from GitHub, extract it, open a terminal in the folder, then run `bash install.sh`.
 
-### Option 2: Clone with Git
+**Or clone:**
 ```bash
 git clone https://github.com/ugwumadu116/RetailStack-POS-Agent.git
 cd RetailStack-POS-Agent
 bash install.sh
 ```
 
----
+## Run
 
-## What It Does
+```bash
+python main.py
+```
 
-- Intercepts ESC/POS data from thermal receipt printers
-- Parses: item names, quantities, prices, totals, receipt IDs
-- Stores transactions locally in SQLite
-- Detects sequence gaps (missing receipts)
-- Crash recovery - replays unsynced data on restart
+Then open the Web UI at http://localhost:8080 and use **Send Test Data** to create a test transaction.
 
----
+## Test with real data
 
-## Testing
-
-Send test data:
+Send test receipt data to the agent:
 ```bash
 echo "Item 1  2 x 500" | nc localhost 9100
 ```
 
----
-
 ## Logs
 
-Logs are saved to: `logs/retailstack.log`
-
----
+Logs are in `logs/retailstack.log`.
 
 ## Support
 

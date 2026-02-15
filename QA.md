@@ -4,16 +4,9 @@
 
 ### Option 1: Run directly
 ```bash
-# 1. Install Python if not installed
-python3 --version  # Should show 3.9+
-
-# 2. Clone or download project
+python3 --version   # Use 3.9 or newer
 cd RetailStackPosAgent
-
-# 3. Install dependencies
 pip install -r requirements.txt
-
-# 4. Run the app
 python main.py
 ```
 
@@ -22,7 +15,7 @@ python main.py
 cd RetailStackPosAgent
 pip install pyinstaller
 pyinstaller build.spec --clean
-# App will be in dist/ folder
+# Output is in the dist/ folder
 ```
 
 ---
@@ -31,16 +24,9 @@ pyinstaller build.spec --clean
 
 ### Option 1: Run directly
 ```cmd
-:: 1. Install Python (download from python.org)
-python --version  :: Should show 3.9+
-
-:: 2. Download project and extract
+python --version
 cd RetailStackPosAgent
-
-:: 3. Install dependencies
 pip install -r requirements.txt
-
-:: 4. Run the app
 python main.py
 ```
 
@@ -49,56 +35,44 @@ python main.py
 cd RetailStackPosAgent
 pip install pyinstaller
 pyinstaller --onefile --windowed main.py
-:: .exe will be in dist/ folder
 ```
 
 ---
 
 ## Testing the Agent
 
-### Method 1: Simulate printer data
+**Send test data:**
 ```bash
-# Send test receipt data to the agent
 echo "Item 1  2 x 500" | nc localhost 9100
 ```
 
-### Method 2: Check the database
-The agent creates `retailstack_pos.db` with all captured transactions.
+**Check the database:** The agent writes transactions to `retailstack_pos.db`.
 
-### Method 3: View logs
-- Mac: `logs/retailstack.log`
-- Windows: Same folder as the .exe
+**View logs:** Open `logs/retailstack.log` (same folder as the app on Windows).
 
 ---
 
 ## Troubleshooting
 
-**"Module not found" error:**
-```bash
-pip install pyserial requests python-dateutil
-```
+**Module not found:** Run `pip install pyserial requests python-dateutil`
 
-**"Port already in use":**
-Another app is using port 9100. Close it or change port in config.json.
+**Port already in use:** Another app is using port 9100. Close it or change the port in config.json.
 
-**No data captured:**
-- Check firewall isn't blocking port 9100
-- Verify printer is configured to print to this PC
-- For testing, use the `nc` command above
+**No data captured:** Allow port 9100 in the firewall. For a real printer, send its output to this computer on port 9100. For testing, use the command above.
 
 ---
 
 ## What to Test
 
-1. ✅ Agent starts without errors
-2. ✅ Shows "Listening on port 9100"
-3. ✅ When test data sent, it creates transaction in DB
-4. ✅ Multiple transactions work
-5. ✅ Check database has correct data (receipt ID, items, total)
-6. ✅ Agent survives closing and reopening
+1. Agent starts without errors
+2. Screen shows "Listening on port 9100"
+3. Sending test data creates a transaction
+4. Multiple transactions are stored correctly
+5. Database has correct receipt ID, items, and total
+6. Agent still works after restart
 
 ---
 
-## Need Help?
+## Support
 
 Contact: Joel Ugwumadu
