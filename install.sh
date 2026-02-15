@@ -3,19 +3,25 @@
 # Run this command on Mac/Linux:
 # curl -fsSL https://raw.githubusercontent.com/ugwumadu116/RetailStack-POS-Agent/main/install.sh | bash
 
-set -e
-
 echo "=========================================="
 echo "  RetailStack POS Agent - Quick Install"
 echo "=========================================="
 
-# Check Python
-if ! command -v python3 &> /dev/null; then
+# Find Python
+PYTHON_CMD=""
+for cmd in python3 python3.13 python3.12 python3.11 python; do
+    if command -v $cmd &> /dev/null; then
+        PYTHON_CMD=$cmd
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
     echo "❌ Python not found. Install from https://python.org"
     exit 1
 fi
 
-echo "✅ Python found: $(python3 --version)"
+echo "✅ Python found: $($PYTHON_CMD --version)"
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +29,12 @@ cd "$SCRIPT_DIR"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-python3 -m pip install pyserial requests python-dateutil 2>/dev/null || python -m pip install pyserial requests python-dateutil
+$PYTHON_CMD -m pip install pyserial requests python-dateutil 2>/dev/null || $PYTHON_CMD -m pip install --user pyserial requests python-dateutil
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to install dependencies"
+    exit 1
+fi
 
 echo "✅ Dependencies installed"
 
@@ -35,4 +46,4 @@ echo ""
 echo "🚀 Starting RetailStack POS Agent..."
 echo "   Press Ctrl+C to stop"
 echo "=========================================="
-python3 main.py
+$PYTHON_CMD main.py
