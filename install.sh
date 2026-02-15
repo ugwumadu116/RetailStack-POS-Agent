@@ -23,7 +23,7 @@ cd "$SCRIPT_DIR"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-pip3 install -q pyserial requests python-dateutil 2>/dev/null || pip install -q pyserial requests python-dateutil
+python3 -m pip install pyserial requests python-dateutil 2>/dev/null || python -m pip install pyserial requests python-dateutil
 
 echo "✅ Dependencies installed"
 
