@@ -29,17 +29,18 @@ Write-Host "✅ Python found: $pythonVersion" -ForegroundColor Green
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptDir
 
-# Install dependencies
+# Install dependencies (--user works on externally-managed Python)
 Write-Host ""
 Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
-& $pythonCmd -m pip install pyserial requests python-dateutil 2>$null
+& $pythonCmd -m pip install --user pyserial requests python-dateutil 2>$null
 
 if ($LASTEXITCODE -ne 0) {
-    & $pythonCmd -m pip install --user pyserial requests python-dateutil 2>$null
+    & $pythonCmd -m pip install pyserial requests python-dateutil 2>$null
 }
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Failed to install dependencies" -ForegroundColor Red
+    Write-Host "Try: $pythonCmd -m pip install --user pyserial requests python-dateutil" -ForegroundColor Yellow
     exit 1
 }
 
@@ -51,6 +52,7 @@ New-Item -ItemType Directory -Force -Path logs | Out-Null
 # Run the app
 Write-Host ""
 Write-Host "🚀 Starting RetailStack POS Agent..." -ForegroundColor Green
+Write-Host "   Logs: $scriptDir\logs\retailstack.log" -ForegroundColor Cyan
 Write-Host "   Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""

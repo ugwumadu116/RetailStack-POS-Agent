@@ -27,12 +27,15 @@ echo "✅ Python found: $($PYTHON_CMD --version)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Install dependencies
+# Install dependencies (--user works on externally-managed Python)
 echo "📦 Installing dependencies..."
-$PYTHON_CMD -m pip install pyserial requests python-dateutil 2>/dev/null || $PYTHON_CMD -m pip install --user pyserial requests python-dateutil
+$PYTHON_CMD -m pip install --user pyserial requests python-dateutil 2>/dev/null || \
+$PYTHON_CMD -m pip install --break-system-packages pyserial requests python-dateutil 2>/dev/null || \
+$PYTHON_CMD -m pip install pyserial requests python-dateutil
 
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install dependencies"
+    echo "Try: $PYTHON_CMD -m pip install --user pyserial requests python-dateutil"
     exit 1
 fi
 
@@ -44,6 +47,7 @@ mkdir -p logs
 # Run the app
 echo ""
 echo "🚀 Starting RetailStack POS Agent..."
+echo "   Logs: $SCRIPT_DIR/logs/retailstack.log"
 echo "   Press Ctrl+C to stop"
 echo "=========================================="
 $PYTHON_CMD main.py
