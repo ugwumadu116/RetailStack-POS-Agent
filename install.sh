@@ -1,7 +1,8 @@
 #!/bin/bash
-# RetailStack POS Agent - One-line installer
-# Run this command on Mac/Linux:
-# curl -fsSL https://raw.githubusercontent.com/ugwumadu116/RetailStack-POS-Agent/main/install.sh | bash
+# RetailStack POS Agent - Quick Install
+# Run these 2 commands:
+# 1. curl -fsSL https://bit.ly/retailstack-install -o install.sh
+# 2. bash install.sh
 
 echo "=========================================="
 echo "  RetailStack POS Agent - Quick Install"
@@ -23,15 +24,15 @@ fi
 
 echo "✅ Python found: $($PYTHON_CMD --version)"
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get current directory (where user is)
+SCRIPT_DIR="$(pwd)"
 cd "$SCRIPT_DIR"
 
-# Install dependencies (--user works on externally-managed Python)
+# Install dependencies
 echo "📦 Installing dependencies..."
 $PYTHON_CMD -m pip install --user pyserial requests python-dateutil 2>/dev/null || \
 $PYTHON_CMD -m pip install --break-system-packages pyserial requests python-dateutil 2>/dev/null || \
-$PYTHON_CMD -m pip install pyserial requests python-dateutil
+$PYTHON_CMD -m pip install pyserial requests python-dateutil 2>/dev/null
 
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install dependencies"

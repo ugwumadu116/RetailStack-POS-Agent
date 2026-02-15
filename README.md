@@ -4,21 +4,17 @@ Desktop application that intercepts ESC/POS receipt printer data, parses sales t
 
 ## Quick Install
 
-### Mac / Linux
+### Option 1: Download ZIP (Recommended)
+1. Go to: https://github.com/ugwumadu116/RetailStack-POS-Agent/archive/refs/heads/main.zip
+2. Download and extract the ZIP
+3. Open terminal in the extracted folder
+4. Run: `bash install.sh`
+
+### Option 2: Clone with Git
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ugwumadu116/RetailStack-POS-Agent/main/install.sh | bash
-```
-
-### Windows
-```powershell
-irm https://raw.githubusercontent.com/ugwumadu116/RetailStack-POS-Agent/main/install.ps1 | iex
-```
-
-Or manually:
-```cmd
-cd RetailStackPosAgent
-pip install -r requirements.txt
-python main.py
+git clone https://github.com/ugwumadu116/RetailStack-POS-Agent.git
+cd RetailStack-POS-Agent
+bash install.sh
 ```
 
 ---
@@ -42,12 +38,9 @@ echo "Item 1  2 x 500" | nc localhost 9100
 
 ---
 
-## Files
+## Logs
 
-- `main.py` - Main application
-- `src/` - Source code modules
-- `config.json` - Configuration
-- `QA.md` - Testing guide for QA team
+Logs are saved to: `logs/retailstack.log`
 
 ---
 
