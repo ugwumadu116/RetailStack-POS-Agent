@@ -45,6 +45,7 @@ class POSAgent:
         self.recovery = RecoveryManager(self.buffer, self.sync_client)
         self.interceptor = None
         self.printer_id = 'store-1'
+        self.port = 9100
     
     def _on_gap_detected(self, gap_info):
         logger.warning(f"GAP: {gap_info}")
@@ -63,21 +64,36 @@ class POSAgent:
         )
         logger.info(f"Transaction saved: {transaction.receipt_id} - N{transaction.total:.2f}")
     
-    def start(self):
-        logger.info("RetailStack POS Agent Starting...")
+    def start(self, port=None):
+        if port:
+            self.port = port
+        logger.info(f"RetailStack POS Agent Starting on port {self.port}...")
         self.recovery.on_startup()
         self.gap_detector.load_last_id(self.printer_id)
         
         self.interceptor = PrinterInterceptor(self._on_printer_data)
-        self.interceptor.start_network('0.0.0.0', 9100)
-        logger.info("Listening on port 9100")
+        self.interceptor.start_network('0.0.0.0', self.port)
+        logger.info(f"Listening on port {self.port}")
         
         self.running = True
+    
+    def restart(self, new_port):
+        logger.info(f"Restarting on port {new_port}...")
+        if self.interceptor:
+            self.interceptor.stop()
+        self.running = False
+        self.port = new_port
+        self.start()
     
     def get_status(self):
         stats = self.buffer.get_stats()
         unsynced = self.buffer.get_unsynced()
-        return {'stats': stats, 'unsynced': unsynced[:10]}
+        return {
+            'stats': stats, 
+            'unsynced': unsynced[:10],
+            'port': self.port,
+            'running': self.running
+        }
     
     def simulate_test_data(self):
         test_data = b"""
@@ -105,80 +121,99 @@ HTML = """
     <title>RetailStack POS Agent</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-               max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a1e; color: #e4e4e7; }
-        h1 { color: #fafafa; }
-        h2 { color: #d4d4d8; }
-        .card { background: #27272a; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 1px solid #3f3f46; }
-        .status { display: flex; gap: 10px; flex-wrap: wrap; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+               max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; }
+        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .status { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         .badge { padding: 8px 16px; border-radius: 20px; font-weight: bold; }
-        .green { background: #166534; color: #86efac; }
-        .yellow { background: #854d0e; color: #fde047; }
-        .red { background: #991b1b; color: #fca5a5; }
-        button { background: #3b82f6; color: white; border: none; padding: 12px 24px;
+        .green { background: #d4edda; color: #155724; }
+        .yellow { background: #fff3cd; color: #856404; }
+        .red { background: #f8d7da; color: #721c24; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; 
                  border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
-        button:hover { background: #2563eb; }
-        button.test { background: #16a34a; color: white; }
-        button.test:hover { background: #15803d; }
-        table { width: 100%; border-collapse: collapse; color: #e4e4e7; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #3f3f46; }
-        th { background: #3f3f46; color: #a1a1aa; }
-        tr:hover { background: #2d2d30; }
-        .log { background: #0f0f12; color: #22c55e; padding: 15px; border-radius: 5px;
-               font-family: monospace; height: 200px; overflow-y: auto; border: 1px solid #27272a; }
-        .instructions { background: #1e3a5f; padding: 15px; border-radius: 5px; border-left: 4px solid #3b82f6; color: #bfdbfe; }
-        .instructions p, .instructions li { color: #e0e7ff; }
-        #testResult { color: #86efac; }
-        p { color: #a1a1aa; }
-        .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        .header img { width: 48px; height: 48px; object-fit: contain; }
+        button:hover { background: #0056b3; }
+        button.test { background: #28a745; }
+        button.test:hover { background: #1e7e34; }
+        button.restart { background: #dc3545; }
+        button.restart:hover { background: #c82333; }
+        input { padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; width: 100px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        .instructions { background: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
+        .form-group { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="/assets/logo.png" alt="RetailStack" />
-        <h1>RetailStack POS Agent</h1>
-    </div>
+    <h1>🧾 RetailStack POS Agent</h1>
     
     <div class="card">
-        <h2>Status</h2>
+        <h2>📊 Status</h2>
         <div class="status">
-            <div class="badge green">Running</div>
-            <div class="badge">Port: 9100</div>
+            <div class="badge green">● Running</div>
+            <div class="badge">Port: <span id="port">9100</span></div>
         </div>
     </div>
     
     <div class="card">
-        <h2>Test</h2>
-        <p>Simulate a test transaction:</p>
-        <button class="test" onclick="runTest()">Send Test Data</button>
+        <h2>⚙️ Configuration</h2>
+        <div class="form-group">
+            <label>Listen Port:</label>
+            <input type="number" id="portInput" value="9100" min="1000" max="65535">
+            <button onclick="restartPort()">🔄 Restart</button>
+        </div>
+        <p><small>Default: 9100. Most thermal printers use port 9100.</small></p>
+    </div>
+    
+    <div class="card">
+        <h2>🧪 Test</h2>
+        <p>Click to simulate a test transaction:</p>
+        <button class="test" onclick="runTest()">📤 Send Test Data</button>
         <p id="testResult"></p>
     </div>
     
     <div class="card">
-        <h2>Transactions</h2>
+        <h2>📈 Transactions</h2>
         <div id="transactions">Loading...</div>
     </div>
     
     <div class="card">
-        <h2>How It Works</h2>
+        <h2>📝 How It Works</h2>
         <div class="instructions">
             <p><strong>What this does:</strong> Listens for receipt printer data and saves transactions.</p>
-            <p><strong>To test:</strong></p>
+            <p><strong>For QA Testing:</strong></p>
             <ol>
-                <li>Click "Send Test Data" above</li>
-                <li>Check that the transaction appears in the table below</li>
-                <li>For a real printer, send its data to this computer on port 9100</li>
+                <li>Click "Send Test Data" - should appear in table below</li>
+                <li>For real printer: Configure printer to send to this PC's IP address on the port above (default 9100)</li>
+                <li>Most thermal printers (Epson, Star, Bixolon) use port 9100 by default</li>
             </ol>
-            <p><strong>Logs:</strong> See logs/retailstack.log</p>
+            <p><strong>Logs:</strong> Check logs/retailstack.log</p>
         </div>
     </div>
     
     <script>
         function runTest() {
             fetch('/test').then(r => r.text()).then(d => {
-                document.getElementById('testResult').innerHTML = '<strong>' + d + '</strong>';
+                document.getElementById('testResult').innerHTML = '<strong>✅ ' + d + '</strong>';
                 loadTransactions();
+            });
+        }
+        
+        function restartPort() {
+            const port = document.getElementById('portInput').value;
+            fetch('/restart?port=' + port).then(r => r.text()).then(d => {
+                alert(d);
+                loadStatus();
+            });
+        }
+        
+        function loadStatus() {
+            fetch('/status').then(r => r.json()).then(d => {
+                document.getElementById('port').innerText = d.port;
+                if (document.getElementById('portInput').value != d.port) {
+                    document.getElementById('portInput').value = d.port;
+                }
             });
         }
         
@@ -189,11 +224,12 @@ HTML = """
                     html += '<tr><td>' + tx.receipt_id + '</td><td>N' + tx.total + '</td><td>' + tx.timestamp + '</td></tr>';
                 });
                 html += '</table>';
-                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click Send Test Data above.</p>';
+                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click "Send Test Data"!</p>';
                 document.getElementById('transactions').innerHTML = html;
             });
         }
         
+        loadStatus();
         loadTransactions();
         setInterval(loadTransactions, 5000);
     </script>
@@ -208,15 +244,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(HTML.encode())
-        elif self.path == '/assets/logo.png':
-            logo_path = Path(__file__).parent / 'assets' / 'logo.png'
-            if logo_path.exists():
-                self.send_response(200)
-                self.send_header('Content-type', 'image/png')
-                self.end_headers()
-                self.wfile.write(logo_path.read_bytes())
-            else:
-                self.send_error(404)
         elif self.path == '/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -227,25 +254,34 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(agent.simulate_test_data().encode())
+        elif self.path.startswith('/restart?port='):
+            try:
+                port = int(self.path.split('=')[1])
+                agent.restart(port)
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(f"Restarted on port {port}".encode())
+            except:
+                self.send_response(400)
+                self.end_headers()
         else:
             super().do_GET()
     
     def log_message(self, format, *args):
-        pass  # Suppress logs
+        pass
 
 
 def main():
-    # Start agent
     agent.start()
     
-    # Start web UI
     PORT = 8080
     server = HTTPServer(('', PORT), Handler)
     
     print("=" * 50)
     print("  RetailStack POS Agent")
     print("=" * 50)
-    print(f"✅ Agent running on port 9100")
+    print(f"✅ Agent running on port {agent.port}")
     print(f"🌐 Web UI: http://localhost:{PORT}")
     print(f"📝 Logs: logs/retailstack.log")
     print("=" * 50)
