@@ -1,11 +1,12 @@
 {
-  "server_url": null,
+  "server_url": "https://api.live.10xpolymarket.com",
+  "backup_transactions_path": "/api/pos/transactions",
   "api_key": null,
   "db_path": "retailstack_pos.db",
   "interceptor_mode": "network",
-  "interceptor_host": "127.0.0.1",
+  "interceptor_host": "0.0.0.0",
   "interceptor_port": 9100,
   "serial_port": "COM3",
   "sync_interval": 60,
-  "printer_id": "default"
+  "printer_id": "store-1"
 }

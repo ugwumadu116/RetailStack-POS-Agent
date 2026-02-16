@@ -80,30 +80,30 @@ class RecoveryManager:
             )
     
     def _replay_transaction(self, tx: Dict):
-        """Replay a single transaction"""
+        """Replay a single transaction to backup API. Never raises; API failure is logged only."""
         receipt_id = tx.get('receipt_id')
-        
-        # Rebuild transaction payload
-        import json
-        payload = {
-            'receipt_id': receipt_id,
-            'printer_id': tx.get('printer_id'),
-            'items': json.loads(tx.get('items_json', '[]')),
-            'subtotal': tx.get('subtotal', 0),
-            'tax': tx.get('tax', 0),
-            'total': tx.get('total', 0),
-            'timestamp': tx.get('timestamp'),
-            'replay': True  # Flag as replayed transaction
-        }
-        
-        result = self.sync_client.sync_transaction(payload)
-        
-        if result.get('success'):
-            self.buffer.mark_synced(tx['id'], result.get('status_code', 200))
-            logger.info(f"Replayed transaction {receipt_id}")
-        else:
-            self.buffer.mark_failed(tx['id'], result.get('error', 'Unknown error'))
-            logger.warning(f"Failed to replay {receipt_id}: {result.get('error')}")
+        try:
+            import json
+            payload = {
+                'receipt_id': receipt_id,
+                'printer_id': tx.get('printer_id'),
+                'items': json.loads(tx.get('items_json', '[]')),
+                'subtotal': tx.get('subtotal', 0),
+                'tax': tx.get('tax', 0),
+                'total': tx.get('total', 0),
+                'timestamp': tx.get('timestamp'),
+                'replay': True,
+            }
+            result = self.sync_client.sync_transaction(payload)
+            if result.get('success'):
+                self.buffer.mark_synced(tx['id'], result.get('status_code', 200))
+                logger.info(f"Replayed transaction {receipt_id}")
+            else:
+                self.buffer.mark_failed(tx['id'], result.get('error', 'Unknown error'))
+                logger.warning(f"Failed to replay {receipt_id}: {result.get('error')}")
+        except Exception as e:
+            logger.warning(f"Backup API replay failed for {receipt_id} (will retry later): {e}")
+            self.buffer.mark_failed(tx['id'], str(e))
     
     def on_shutdown(self):
         """Save state before shutdown"""

@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 class SyncClient:
     """REST API client for syncing transactions to Retail Stack"""
     
-    def __init__(self, base_url: str, api_key: str = None, timeout: int = 30):
+    def __init__(self, base_url: str, api_key: str = None, timeout: int = 30,
+                 transactions_path: str = '/api/transactions'):
         self.base_url = base_url.rstrip('/')
+        self.transactions_path = transactions_path if transactions_path.startswith('/') else '/' + transactions_path
         self.api_key = api_key
         self.timeout = timeout
         self.session = requests.Session()
@@ -33,8 +35,8 @@ class SyncClient:
         self.retry_delay = 5  # seconds
     
     def sync_transaction(self, transaction: Dict) -> Dict[str, Any]:
-        """Sync a single transaction"""
-        endpoint = f"{self.base_url}/api/transactions"
+        """Sync a single transaction to backup API"""
+        endpoint = f"{self.base_url}{self.transactions_path}"
         
         for attempt in range(self.max_retries):
             try:

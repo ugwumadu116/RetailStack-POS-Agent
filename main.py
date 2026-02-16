@@ -18,7 +18,7 @@ from src.escpos_parser import ESCPOSParser
 from src.transaction_buffer import TransactionBuffer
 from src.gap_detector import GapDetector
 from src.printer_interceptor import PrinterInterceptor
-from src.sync_client import StubSyncClient
+from src.sync_client import SyncClient, StubSyncClient
 from src.recovery_manager import RecoveryManager
 
 
@@ -35,17 +35,35 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _load_config():
+    config_path = Path(__file__).parent / 'config.json'
+    if config_path.exists():
+        with open(config_path) as f:
+            return json.load(f)
+    return {}
+
+
 class POSAgent:
     def __init__(self):
         self.running = False
-        self.buffer = TransactionBuffer('retailstack_pos.db')
-        self.sync_client = StubSyncClient()
+        config = _load_config()
+        self.buffer = TransactionBuffer(config.get('db_path', 'retailstack_pos.db'))
+        # Backup API: still save locally, also POST to backend
+        server_url = config.get('server_url') or config.get('backup_api_url')
+        if server_url:
+            self.sync_client = SyncClient(
+                server_url,
+                api_key=config.get('api_key'),
+                transactions_path=config.get('backup_transactions_path', '/api/pos/transactions'),
+            )
+        else:
+            self.sync_client = StubSyncClient()
         self.parser = ESCPOSParser()
         self.gap_detector = GapDetector(self.buffer, self._on_gap_detected)
         self.recovery = RecoveryManager(self.buffer, self.sync_client)
         self.interceptor = None
-        self.printer_id = 'store-1'
-        self.port = 9100
+        self.printer_id = config.get('printer_id', 'store-1')
+        self.port = config.get('interceptor_port', 9100)
     
     def _on_gap_detected(self, gap_info):
         logger.warning(f"GAP: {gap_info}")
@@ -55,14 +73,37 @@ class POSAgent:
         transaction = self.parser.parse(data)
         self.gap_detector.check_sequence(transaction.receipt_id, self.printer_id)
         
-        items = [{'name': i.name, 'quantity': i.quantity, 'unit_price': i.unit_price, 'total': i.total} 
+        items = [{'name': i.name, 'quantity': i.quantity, 'unit_price': i.unit_price, 'total': i.total}
                  for i in transaction.items]
         
-        self.buffer.add_transaction(
-            transaction.receipt_id, items, transaction.total, 
+        # Save to local DB first
+        tx_id = self.buffer.add_transaction(
+            transaction.receipt_id, items, transaction.total,
             transaction.subtotal, transaction.tax, self.printer_id
         )
-        logger.info(f"Transaction saved: {transaction.receipt_id} - N{transaction.total:.2f}")
+        logger.info(f"Transaction saved locally: {transaction.receipt_id} - N{transaction.total:.2f}")
+        
+        # Backup: send to remote API. If this fails, nothing breaks; recovery will retry on restart.
+        try:
+            ts = transaction.timestamp
+            timestamp_str = ts.isoformat() if hasattr(ts, 'isoformat') else str(ts)
+            payload = {
+                'receipt_id': transaction.receipt_id,
+                'printer_id': self.printer_id,
+                'items': items,
+                'subtotal': transaction.subtotal,
+                'tax': transaction.tax,
+                'total': transaction.total,
+                'timestamp': timestamp_str,
+                'replay': False,
+            }
+            result = self.sync_client.sync_transaction(payload)
+            if result.get('success'):
+                self.buffer.mark_synced(tx_id, result.get('status_code', 200))
+            else:
+                logger.warning(f"Backup API sync failed for {transaction.receipt_id}: {result.get('error', 'unknown')}")
+        except Exception as e:
+            logger.warning(f"Backup API call failed (transaction still saved locally): {e}")
     
     def start(self, port=None):
         if port:
@@ -143,59 +184,64 @@ HTML = """
         th { background: #f8f9fa; }
         .instructions { background: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
         .form-group { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
+        .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .header img { width: 48px; height: 48px; object-fit: contain; }
     </style>
 </head>
 <body>
-    <h1>🧾 RetailStack POS Agent</h1>
+    <div class="header">
+        <img src="/assets/logo.png" alt="RetailStack">
+        <h1>RetailStack POS Agent</h1>
+    </div>
     
     <div class="card">
-        <h2>📊 Status</h2>
+        <h2>Status</h2>
         <div class="status">
-            <div class="badge green">● Running</div>
+            <div class="badge green">Running</div>
             <div class="badge">Port: <span id="port">9100</span></div>
         </div>
     </div>
     
     <div class="card">
-        <h2>⚙️ Configuration</h2>
+        <h2>Configuration</h2>
         <div class="form-group">
             <label>Listen Port:</label>
             <input type="number" id="portInput" value="9100" min="1000" max="65535">
-            <button onclick="restartPort()">🔄 Restart</button>
+            <button onclick="restartPort()">Restart</button>
         </div>
-        <p><small>Default: 9100. Most thermal printers use port 9100.</small></p>
+        <p><small>Default is 9100. Most thermal printers use port 9100.</small></p>
     </div>
     
     <div class="card">
-        <h2>🧪 Test</h2>
-        <p>Click to simulate a test transaction:</p>
-        <button class="test" onclick="runTest()">📤 Send Test Data</button>
+        <h2>Test</h2>
+        <p>Simulate a test transaction:</p>
+        <button class="test" onclick="runTest()">Send Test Data</button>
         <p id="testResult"></p>
     </div>
     
     <div class="card">
-        <h2>📈 Transactions</h2>
+        <h2>Transactions</h2>
         <div id="transactions">Loading...</div>
     </div>
     
     <div class="card">
-        <h2>📝 How It Works</h2>
+        <h2>How It Works</h2>
         <div class="instructions">
             <p><strong>What this does:</strong> Listens for receipt printer data and saves transactions.</p>
-            <p><strong>For QA Testing:</strong></p>
+            <p><strong>To test:</strong></p>
             <ol>
-                <li>Click "Send Test Data" - should appear in table below</li>
-                <li>For real printer: Configure printer to send to this PC's IP address on the port above (default 9100)</li>
-                <li>Most thermal printers (Epson, Star, Bixolon) use port 9100 by default</li>
+                <li>Click Send Test Data. The transaction should appear in the table below.</li>
+                <li>For a real printer, send its data to this computer on the port above (default 9100).</li>
+                <li>Most thermal printers (Epson, Star, Bixolon) use port 9100.</li>
             </ol>
-            <p><strong>Logs:</strong> Check logs/retailstack.log</p>
+            <p><strong>Logs:</strong> See logs/retailstack.log</p>
         </div>
     </div>
     
     <script>
         function runTest() {
             fetch('/test').then(r => r.text()).then(d => {
-                document.getElementById('testResult').innerHTML = '<strong>✅ ' + d + '</strong>';
+                document.getElementById('testResult').innerHTML = '<strong>' + d + '</strong>';
                 loadTransactions();
             });
         }
@@ -224,7 +270,7 @@ HTML = """
                     html += '<tr><td>' + tx.receipt_id + '</td><td>N' + tx.total + '</td><td>' + tx.timestamp + '</td></tr>';
                 });
                 html += '</table>';
-                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click "Send Test Data"!</p>';
+                if (d.unsynced.length === 0) html = '<p>No transactions yet. Click Send Test Data above.</p>';
                 document.getElementById('transactions').innerHTML = html;
             });
         }
@@ -244,6 +290,15 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(HTML.encode())
+        elif self.path == '/assets/logo.png':
+            logo_path = Path(__file__).parent / 'assets' / 'logo.png'
+            if logo_path.exists():
+                self.send_response(200)
+                self.send_header('Content-type', 'image/png')
+                self.end_headers()
+                self.wfile.write(logo_path.read_bytes())
+            else:
+                self.send_error(404)
         elif self.path == '/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
